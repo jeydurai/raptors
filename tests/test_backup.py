@@ -65,7 +65,7 @@ class BackupTest(unittest.TestCase):
         """Tests whether the shell_cmd_delete_dump_dir function 
         returns correct string
         """
-        self.backup.set_attributes()
+        self.backup._set_attributes()
         matching_str = "rm -rf {}/dump".format(self.home_dir)
         self.assertTrue(self.backup.executable.shell_cmd_delete_dump_dir() == matching_str)
         return
@@ -73,33 +73,27 @@ class BackupTest(unittest.TestCase):
     def test_shell_cmd_create_mongodump_should_be(self):
         """Tests whether the shell_cmd_mongodump function returns correct string
         """
-        self.backup.set_attributes()
+        self.backup._set_attributes()
         matching_str = "mongodump --out {} --db test --collection master_unique_names".format(
                 self.backup.executable.dump_directory)
-        print("[DBG]: Expected Value={}".format(matching_str))
-        print("[DBG]: Got Value     ={}".format(self.backup.executable.shell_cmd_mongodump()))
         self.assertTrue(self.backup.executable.shell_cmd_mongodump() == matching_str)
         return
 
     def test_shell_cmd_move_tar_to_location_should_be(self):
         """Tests whether the shell_cmd_move_tar_to_location function returns correct string
         """
-        self.backup.set_attributes()
+        self.backup._set_attributes()
         matching_str = "mv {} {}".format(
                 self.backup.executable.dumpname, self.backup.executable.base_dir)
-        print("[DBG]: Expected Value={}".format(matching_str))
-        print("[DBG]: Got Value     ={}".format(self.backup.executable.shell_cmd_move_tar_to_location()))
         self.assertTrue(self.backup.executable.shell_cmd_move_tar_to_location() == matching_str)
         return
 
     def test_without_db_and_coll_names_shell_cmd_create_mongodump_should_be(self):
         """Tests whether the shell_cmd_mongodump without db and coll names returns correct string 
         """
-        self.backup3.set_attributes()
+        self.backup3._set_attributes()
         matching_str = "mongodump --out {} --db ccsdm".format(
                 self.backup3.executable.dump_directory)
-        print("[DBG]: Expected Value={}".format(matching_str))
-        print("[DBG]: Got Value     ={}".format(self.backup3.executable.shell_cmd_mongodump()))
         self.assertTrue(self.backup3.executable.shell_cmd_mongodump() == matching_str)
         return
 
