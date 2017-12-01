@@ -10,6 +10,7 @@ import pandas as pd
 import string
 from raptors.helpers.exceptions.modelsexceptions import ExcelFileDoesNotExistException
 from raptors.helpers.exceptions.modelsexceptions import ExcelSheetDoesNotExistException
+from raptors.helpers.exceptions.modelsexceptions import CollectionDoesNotExistException
 from raptors.helpers.pandashelpers import DataFrameHelper
 
 from raptors import __version__
@@ -73,25 +74,15 @@ class Reader(DataFrameHelper):
         self.reader.validate()
         return
     
-
-class EntBookingDumpReader(Reader):
-    """Traits contains the common interface of 
-    readable functionalities of 'ent_dump_from_finance' collection
+class SalesDumpReader(Reader):
+    """Adaptor contains the common interface of editable 
+    functionalities of 'ent_dump_from_finance' & 'sfdc_raw_dump' collections
     """
 
 
     def __init__(self, reader):
         """Initializer for Readable class"""
         super().__init__(reader)
-        self.cols_renamable = {
-            'tms_sales_allocated_bookings_base_list' : 'base_list',
-            'tbm' : 'sales_agent'
-        }
-
-    def rename_colnames_neatly(self):
-        """Hook method to rename the column names into readable"""
-        self.rename_columns(self.cols_renamable)
-        return
 
     def upcase_customernames(self):
         """Public hook method to change 'customer_name' case into upper"""
@@ -113,9 +104,61 @@ class EntBookingDumpReader(Reader):
         self.downcase_column('partner_name')
         return
         
+    def map_technologies(self, techmapper):
+        """Maps the technology/architecture data into 'ent_dump_from_finance' data"""
+        self.left_join(techmapper.df, on=techmapper.mappable_cols, map_desc='Technology Mapping')
+        return
+
+    def map_segments(self, segmapper):
+        """Maps the OD, RM, Segments data into 'ent_dump_from_finance' & 'sfdc_raw_dump' data"""
+        self.left_join(segmapper.df, on=segmapper.mappable_cols, map_desc='Segment Mapping')
+        return
+
+    def map_uniquenames(self, uniquenames):
+        """Maps the Unique names, vertical into 'ent_dump_from_finance' data"""
+        self.left_join(uniquenames.df, on=uniquenames.mappable_cols, map_desc='Uniquenames Mapping')
+        return
+
+    def validate_sl4(self):
+        """Public method to correct sales_level_4"""
+        print("[Info]: Validating SL4 column (Reassigning into one unique)...")
+        base_colname = 'sales_level_4'
+        masks = { 
+            'INDIA_COMM_SW_GEO' : ((self.df.loc[:, base_colname] == 'INDIA_COMM_WST') | (self.df.loc[:, base_colname] == 'INDIA_COMM_STH')),
+            'INDIA_COMM_NE_GEO' : (self.df.loc[:, base_colname] == 'INDIA_COMM_NORTH_EAST'),
+            'INDIA_COMM_MISC'   : (self.df.loc[:, base_colname] == 'INDIA_COMM_1-MISCL4')
+        }
+        self.fill_column_by_mask(masks, base_colname)
+        return
+
+
+class EntBookingDumpReader(SalesDumpReader):
+    """Traits contains the common interface of 
+    readable functionalities of 'ent_dump_from_finance' collection
+    """
+
+
+    def __init__(self, reader):
+        """Initializer for Readable class"""
+        super().__init__(reader)
+        self.cols_renamable = {
+            'tms_sales_allocated_bookings_base_list' : 'base_list',
+            'tbm' : 'sales_agent'
+        }
+
+    def rename_colnames_neatly(self):
+        """Hook method to rename the column names into readable"""
+        self.rename_columns(self.cols_renamable)
+        return
+
     def make_fiscalyearid_column(self):
         """Public method to make fiscal_year_id from fiscal_quarter_id"""
         self.make_new_column(lambda x: x[:4], 'fiscal_quarter_id', new_colname='fiscal_year_id')
+        return
+
+    def make_fiscalquarter_column(self):
+        """Public method to make fiscal_quarter from fiscal_quarter_id"""
+        self.make_new_column(lambda x: str(x)[-2:], 'fiscal_quarter_id', new_colname='fiscal_quarter')
         return
         
     def make_fiscalmonthid_column(self):
@@ -151,31 +194,10 @@ class EntBookingDumpReader(Reader):
         self.fill_column_by_mask(masks, 'tier_code')
         return
         
-    def validate_sl4(self):
-        """Public method to correct sales_level_4"""
-        print("[Info]: Validating SL4 column (Reassigning into one unique)...")
-        base_colname = 'sales_level_4'
-        masks = { 
-            'INDIA_COMM_SW_GEO' : ((self.df.loc[: base_colname] == 'INDIA_COMM_WST') | (self.df.loc[: base_colname] == 'INDIA_COMM_STH')),
-            'INDIA_COMM_NE_GEO' : (self.df.loc[: base_colname] == 'INDIA_COMM_NORTH_EAST'),
-            'INDIA_COMM_MISC'   : (self.df.loc[: base_colname] == 'INDIA_COMM_1-MISCL4')
-        }
-        self.fill_column_by_mask(masks, base_colname)
-        return
-
-    def map_technologies(self, techmapper):
-        """Maps the technology/architecture data into 'ent_dump_from_finance' data"""
-        self.left_join(techmapper.df, on=techmapper.mappable_cols, map_desc='Technology Mapping')
-        return
-
-    def map_uniquenames(self, uniquenames):
-        """Maps the Unique names, vertical into 'ent_dump_from_finance' data"""
-        self.left_join(uniquenames.df, on=uniquenames.mappable_cols, map_desc='Uniquenames Mapping')
-        return
-
     def validate_mapping(self):
         """Validates whether any unmapped data available"""
         self._validate_mapping_technologies()
+        self._validate_mapping_segements()
         self._validate_mapping_uniquenames()
         return
 
@@ -186,6 +208,15 @@ class EntBookingDumpReader(Reader):
         if unmapped > 0:
             print("{} row(s) of unmapped 'internal_sub_business_entity_name' data found".format(unmapped))
             self.df.loc[mask, ['internal_sub_business_entity_name', 'arch2']].to_excel('unmapped_technologies.xlsx', index=False)
+        return
+        
+    def _validate_mapping_segements(self):
+        """Validates whether any unmapped data available in segments mapping"""
+        mask = pd.isnull(self.df.loc[:, 'rm_name'])
+        unmapped = self.df.loc[mask, :].shape[0]
+        if unmapped > 0:
+            print("{} row(s) of unmapped 'sales_level_5' data found".format(unmapped))
+            self.df.loc[mask, ['sales_level_5', 'rm_name']].to_excel('unmapped_segments.xlsx', index=False)
         return
         
     def _validate_mapping_uniquenames(self):
@@ -199,6 +230,83 @@ class EntBookingDumpReader(Reader):
         
         
 
+class SFDCDumpReader(SalesDumpReader):
+    """Traits contains the common interface of 
+    readable functionalities of 'sfdc_raw_dump' collection
+    """
+
+
+    def __init__(self, reader):
+        """Initializer for Readable class"""
+        super().__init__(reader)
+        self.cols_renamable = {
+            'tms_sales_allocated_bookings_base_list' : 'base_list',
+            'tbm' : 'sales_agent'
+        }
+
+    def make_pastdue_column(self):
+        """Public method to validate 'past_due' column"""
+        print("[Info]: Validating 'past_due' column...")
+        base_colname = 'no_of_days_past_ebd'
+        masks = { 
+            'FALSE' : (self.df.loc[:, base_colname] < 0),
+            'TRUE'  : (self.df.loc[:, base_colname] >= 0),
+        }
+        self.fill_column_by_mask(masks, 'past_due')
+        return
+
+    def make_fiscalyearid_column(self):
+        """Public method to make fiscal_year_id from fiscal_period"""
+        self.make_new_column(lambda x: str(x)[-4:], 'fiscal_period', new_colname='fiscal_year_id')
+        return
+
+    def make_fiscalquarter_column(self):
+        """Public method to make fiscal_quarter from fiscal_period"""
+        self.make_new_column(lambda x: str(x)[:2], 'fiscal_period', new_colname='fiscal_quarter')
+        return
+        
+    def make_fiscalquarterid_column(self):
+        """Public method to make fiscal_quarter_id from fiscal_period"""
+        self.make_new_column(lambda x: str(x)[-4:] + str(x)[:2], 'fiscal_period', new_colname='fiscal_quarter_id')
+        return
+        
+    def make_fiscalmonthid_column(self):
+        """Public method to make fiscal_month_id from fiscal_month"""
+        self.make_new_column(lambda x: x, 'fiscal_month', new_colname='fiscal_month_id')
+        return
+        
+    def make_prodserv_column(self):
+        """Public method to create 'prod/serv' column"""
+        print("[Info]: Making 'prod_serv' column...")
+        self.make_new_column({ 'Technology': 'products', 'Service': 'services' }, 
+                'technology_service_code', new_colname='prod_serv')
+        return
+        
+    def validate_mapping(self):
+        """Validates whether any unmapped data available"""
+        self._validate_mapping_technologies()
+        self._validate_mapping_segements()
+        return
+
+    def _validate_mapping_technologies(self):
+        """Validates whether any unmapped data available in technology mapping"""
+        mask = pd.isnull(self.df.loc[:, 'arch2'])
+        unmapped = self.df.loc[mask, :].shape[0]
+        if unmapped > 0:
+            print("{} row(s) of unmapped 'internal_sub_business_entity_name' data found".format(unmapped))
+            self.df.loc[mask, ['internal_sub_business_entity_name', 'arch2']].to_excel('unmapped_technologies.xlsx', index=False)
+        return
+        
+    def _validate_mapping_segements(self):
+        """Validates whether any unmapped data available in segments mapping"""
+        mask = pd.isnull(self.df.loc[:, 'rm_name'])
+        unmapped = self.df.loc[mask, :].shape[0]
+        if unmapped > 0:
+            print("{} row(s) of unmapped 'sales_level_5' data found".format(unmapped))
+            self.df.loc[mask, ['sales_level_5', 'rm_name']].to_excel('unmapped_segments.xlsx', index=False)
+        return
+        
+
 class TechSpec1Reader(Reader):
     """Traits contains the common interface of 
     readable functionalities of 'tech_spec1' collection
@@ -209,6 +317,24 @@ class TechSpec1Reader(Reader):
 
     def __init__(self, reader):
         """Initializer for TechSpec1Reader class"""
+        super().__init__(reader)
+
+    def remove_dedundancy(self):
+        """Removes the duplicate entries in the data"""
+        self.remove_duplicates(self.mappable_cols)
+        return
+
+
+class SL5ToSegmentsReader(Reader):
+    """Traits contains the common interface of 
+    readable functionalities of 'sl5_to_segments' collection
+    """
+
+    mappable_cols = 'sales_level_5'
+
+
+    def __init__(self, reader):
+        """Initializer for SL5ToSegmentReader class"""
         super().__init__(reader)
 
     def remove_dedundancy(self):
@@ -289,8 +415,11 @@ class MongoReader():
     def read_dict(self, qry={}, method='find'):
         """Reads and returns the data as python dictionary
         """
-        if method.lower() == 'find':
-            return list(self.coll.find({}))[0]
+        try:
+            if method.lower() == 'find':
+                return list(self.coll.find({}))[0]
+        except IndexError:
+            raise CollectionDoesNotExistException(self.collname)
         return
 
 
@@ -304,7 +433,7 @@ class ExcelReader():
         self.filepath  = filepath
         self.sheetname = sheetname
 
-    def read(self):
+    def read(self, qry=None, method=None):
         """Reading data and returns as Pandas dataframe"""
         if self.sheetname is not None:
             xl = pd.ExcelFile(self.filepath)

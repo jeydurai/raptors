@@ -8,6 +8,8 @@ from datetime import datetime
 from raptors.helpers.exceptions.modelsexceptions import MappingRowsExceededException
 import pandas as pd
 import string
+import datetime
+import time
 
 from raptors import __version__
 
@@ -39,6 +41,11 @@ class DataFrameHelper():
         if isinstance(x, int):
             return x
         return x.lower()
+
+    def add_timestamp(self):
+        """Adding Timestamp into the dataframe"""
+        self.df.loc[:, 'timestamp'] = datetime.datetime.fromtimestamp(time.time(), None)
+        return
 
     def rename_columns(self, cols_mapper):
         """Public method to rename the column names"""

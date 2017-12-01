@@ -43,6 +43,21 @@ class ExcelSheetDoesNotExistException(Exception):
         return "{} does not exist!!!".format(self.sheet)
         
 
+class CollectionDoesNotExistException(Exception):
+    """MongoDB Collection does not exist Error
+    """
+
+
+    def __init__(self, coll):
+        """Initializer for CollectionDoesNotExistException class"""
+        super().__init__("Given Collection does not exist")
+        self.coll = coll
+
+    def msg(self):
+        """Special Error Message"""
+        return "{} does not exist!!!".format(self.coll)
+        
+
 class MappingRowsExceededException(Exception):
     """DataFrame mapping (merging) rows exceeded
     """

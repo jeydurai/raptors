@@ -97,7 +97,12 @@ class MongoWriter():
         tic  = timeit.default_timer()
         pbar = ProgressBar(tot_rows, tic)
         for idx, row in df.iterrows():
-            result = self.coll.insert(dict(row))
+            try:
+                result = self.coll.insert(dict(row))
+            except OverflowError:
+                opp_id = row['opportunity_id']
+                row['opportunity_id'] = str(opp_id) if isinstance(opp_id, int) else opp_id
+                result = self.coll.insert(dict(row))
             pbar.display(idx)
         tot_docs = self.how_many_docs()
         print("Collection now has {} document(s)\n\nAll done!".format(tot_docs))

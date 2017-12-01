@@ -8,7 +8,7 @@ import os
 import logging
 from raptors.controllers.backup import Backup
 from raptors.controllers.sync import Sync
-from raptors.controllers.cleandump import CleanBookingDump
+from raptors.controllers.cleandump import CleanBookingDump, CleanSFDCDump
 from raptors.helpers.exceptions.controllersexceptions import SyncFilePathNotGivenException
 from raptors.helpers.exceptions.controllersexceptions import BothCommAndAllSL3TrueError
 
@@ -95,10 +95,24 @@ def takefood(config, filepath, sheetname, collection, database, host, port, file
 @click.argument('years', nargs=-1, required=False)
 @pass_config
 def makepacks(config, history, comm, collection, database, host, port, years):
-    """Validates and creates a new collection"""
+    """Validates and creates 'booking_dump' collection"""
     des_db  = database if database else 'ccsdm'
     des_tbl = collection if collection else 'booking_dump'
     CleanBookingDump(history, years, comm, des_tbl, des_db, host=host, port=port).execute()
+    return
+    
+@main.command()
+@click.option( '--comm/--no-comm', default=True, help='Commercial or All others with Commercial')
+@click.option('--collection', '-c', help='MongoDB switch to give collection name')
+@click.option('--database',   '-d', help='MongoDB switch to give database name')
+@click.option('--host',       '-h', help='MongoDB Host')
+@click.option('--port',       '-p', help='MongoDB Port')
+@pass_config
+def migratefuture(config, comm, collection, database, host, port):
+    """Validates and creates 'sfdc_dump' collection"""
+    des_db  = database if database else 'ccsdm'
+    des_tbl = collection if collection else 'sfdc_dump'
+    CleanSFDCDump(comm, des_tbl, des_db, host=host, port=port).execute()
     return
     
     

@@ -8,6 +8,7 @@ from datetime import datetime
 from raptors.models.readers import Reader, ExcelReader, MongoReader
 from raptors.models.writers import Writer, MongoWriter
 from raptors.helpers.mongoutils import Mongo
+from raptors.helpers.exceptions.modelsexceptions import CollectionDoesNotExistException
 from raptors import __version__
 
 __author__ = "Jeyaraj Durairaj"
@@ -29,9 +30,15 @@ class Sync():
         self.streaming       = streaming
         self.sensitive_colls = sensitive_colls if sensitive_colls else [ 'ent_dump_from_finance', 'ent_dump_from_finance_old' ]
         self.is_sensitive    = des_tbl in self.sensitive_colls
+        self.is_sfdc         = des_tbl == 'sfdc_raw_dump'
         self.clean_cols      = []
-        if self.is_sensitive:
-            self.clean_cols  = Reader(MongoReader('booking_dump_cols')).read_dict()
+        try:
+            if self.is_sensitive:
+                self.clean_cols  = Reader(MongoReader('booking_dump_cols')).read_dict()
+            if self.is_sfdc:
+                self.clean_cols  = Reader(MongoReader('sfdc_dump_cols')).read_dict()
+        except CollectionDoesNotExistException as e:
+            print("[Error]: Couldn't proceed further due to \n\n{}".format(e.msg()))
         self.trash_query     = {}
 
     def execute(self):
@@ -62,10 +69,11 @@ class Sync():
         reading full data first and write them
         """
         self._read_and_cleanup()
-        if self.is_sensitive:
-            self._expunge_existing_data()
-        else:
-            self._expunge_all_existing_data()
+        if not self.is_sfdc:
+            if self.is_sensitive:
+                self._expunge_existing_data()
+            else:
+                self._expunge_all_existing_data()
         self.writer.write(self.reader.df)
         return
 
@@ -76,9 +84,12 @@ class Sync():
         print("[Info]: Cleaning data...")
         self.reader.downcase_colnames() # Calling DataFrameHelper function through Reader class
         self.reader.fill_notapplicables() # By default, fill value is zero
-        if self.is_sensitive:
+        if self.is_sensitive or self.is_sfdc:
             self.reader.rename_columns(self.clean_cols)
-            self.reader.delete_columns('not_to_be_mapped')
+            if self.is_sensitive:
+                self.reader.delete_columns('not_to_be_mapped')
+        if self.is_sensitive or self.is_sfdc:
+            self.reader.add_timestamp() # Adding timestamp to all dataframe
         return
 
     def _expunge_all_existing_data(self):
