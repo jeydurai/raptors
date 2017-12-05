@@ -396,7 +396,7 @@ class MongoReader():
         self.client                = MongoClient(host, port)
         self.db                    = self.client[dbname]
         self.coll                  = self.db[collname]
-        self.hideable              = { '_id': 0 }
+        self.hideable              = { '_id': 0, 'timestamp': 0 }
 
     def read(self, qry, method):
         """Reads and returns the data as Pandas dataframe"""

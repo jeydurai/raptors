@@ -57,6 +57,7 @@ class CleanBookingDump():
         self._read_dump()
         self._cleanup_data()
         self._read_mappers()
+        # self._remove_timestamps()
         self._execute_mapping()
         self._write_dump()
         return
@@ -65,6 +66,19 @@ class CleanBookingDump():
         """Writes Cleaned Dump into the new collection"""
         self._expunge_all_existing_data()
         self.writer.write(self.reader.df)
+        return
+
+    def _remove_timestamps(self):
+        """Removes the timestamps from the dataframes"""
+        cols_to_be_deleted = 'timestamp'
+        print("Dump's columns: {}".format(self.reader.df.columns))
+        self.reader.delete_columns(cols_to_be_deleted)
+        print("Dump's columns: {}".format(self.techmapper.df.columns))
+        self.techmapper.delete_columns(cols_to_be_deleted)
+        print("Dump's columns: {}".format(self.setmapper.df.columns))
+        self.segmapper.delete_columns(cols_to_be_deleted)
+        print("Dump's columns: {}".format(self.uniquenames.df.columns))
+        self.uniquenames.delete_columns(cols_to_be_deleted)
         return
         
     def _cleanup_data(self):

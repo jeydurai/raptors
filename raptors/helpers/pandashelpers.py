@@ -68,6 +68,11 @@ class DataFrameHelper():
         print("After performing {} mapping, the dataframe contains {} row(s) {} col(s)".format(map_desc, self.rows, self.cols))
         return
 
+    def delete_columns(self, cols):
+        """Drops columns from DataFrame"""
+        self.df.drop(cols, axis=1, inplace=True)
+        return
+
     def left_join(self, other, on, map_desc=''):
         """Left Join two dataframes"""
         rows_bef = self.rows
