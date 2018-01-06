@@ -7,7 +7,9 @@ import os
 from datetime import datetime
 from pymongo import MongoClient
 from raptors.views.misc import ProgressBar
+from pprint import pprint
 import timeit
+import pandas as pd
 
 from raptors import __version__
 
@@ -126,6 +128,35 @@ class MongoWriter():
         self.recs_planned = self.how_many_docs(qry)
         self.coll.remove(qry, multi=True)
         self.recs_after  = self.how_many_docs()
+        
+
+class ExcelWriter():
+    """Writes Dictionary data into Excel
+    """
+
+
+    def __init__(self, filename, sheetname=None):
+        """Initializer for ExcelWriter class"""
+        self.filename  = filename
+        self.pd_writer = pd.ExcelWriter(self.filename, engine='xlsxwriter')
+        self.sheetname = sheetname
+
+    def write(self, df, csv=False):
+        """Public method to write the data into Excel"""
+        print('[Info]: Writing Data...')
+        if csv:
+            print("Writing as CSV!...")
+            self.filename = "{}{}".format(self.filename[:-4], 'csv')
+            df.to_csv(self.filename, index=False)
+            return
+        print("Writing as XLSX!...")
+        if self.sheetname is None:
+            print("Writing as XLSX with default sheetname 'Sheet1'!...")
+            self.sheetname = 'Sheet1'
+        df.to_excel(self.pd_writer, sheet_name=self.sheetname, index=False)
+        self.pd_writer.save()
+        print("\n\nAll done!")
+        return
         
 
 

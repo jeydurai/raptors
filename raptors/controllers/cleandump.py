@@ -93,6 +93,7 @@ class CleanBookingDump():
         self.reader.make_prodserv_column()
         self.reader.make_cloudflag_column()
         self.reader.make_tiercode_column()
+        self.reader.validate_sl4()
         return
 
     def _read_dump(self):

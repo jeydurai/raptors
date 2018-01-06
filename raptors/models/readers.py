@@ -31,30 +31,30 @@ class Reader(DataFrameHelper):
         self.reader = reader
         self.df     = None
 
-    def read(self, qry={}, method='find', loop_params=None):
+    def read(self, qry={}, loop_params=None):
         """Hook method to read the data irrespective of the engine 
         as abstracted interface
         """
         if loop_params is None:
-            self.df = self.reader.read(qry, method)
+            self.df = self.reader.read(qry)
         else:
             params = loop_params['params']
             field  = loop_params['field']
             self.df = pd.DataFrame()
             for param in params:
                 qry[field] = param
-                dframe     = self.reader.read(qry, method)
+                dframe     = self.reader.read(qry)
                 if not dframe.empty:
                     self.df = self.df.append(dframe)
         self.rows, self.cols = self.df.shape
         print("{} row(s) {} col(s) have been read.".format(self.rows, self.cols))
         return
 
-    def read_dict(self, qry={}, method='find'):
+    def read_dict(self, qry={}):
         """Hook method to read the data in dict format 
         irrespective of the engine as abstracted interface
         """
-        return self.reader.read_dict(qry, method)
+        return self.reader.read_dict(qry)
 
     def trash_one(self, qry):
         """Hook method to remove just one document/row 
@@ -74,6 +74,29 @@ class Reader(DataFrameHelper):
         self.reader.validate()
         return
     
+
+class AggregationReader(Reader):
+    """Traits contains the common interface of 
+    aggregatable functionalities
+    """
+
+
+    def __init__(self, reader):
+        """Initializier for AggregationReader class"""
+        super().__init__(reader)
+        self.df = pd.DataFrame()
+
+    def read(self, agg_pipes=None):
+        """Overridden hook method to read data using MongoDB aggregation"""
+        for pipe in agg_pipes:
+            dframe = self.reader.agg(pipe)
+            if not dframe.empty:
+                self.df = self.df.append(dframe)
+        self.rows, self.cols = self.df.shape
+        print("{} row(s) {} col(s) have been read.".format(self.rows, self.cols))
+        return
+
+
 class SalesDumpReader(Reader):
     """Adaptor contains the common interface of editable 
     functionalities of 'ent_dump_from_finance' & 'sfdc_raw_dump' collections
@@ -228,7 +251,6 @@ class EntBookingDumpReader(SalesDumpReader):
             self.df.loc[mask, ['customer_name', 'grp_name']].to_excel('unmapped_unique_customers.xlsx', index=False)
         return
         
-        
 
 class SFDCDumpReader(SalesDumpReader):
     """Traits contains the common interface of 
@@ -325,6 +347,26 @@ class TechSpec1Reader(Reader):
         return
 
 
+class CommercialPlan(Reader):
+    """Traits contains the common interface of 
+    readabve functionalities of 'commercial_plan' collection
+    """
+    
+    def __init__(self, reader):
+        """Initializer for CommercialPlan class"""
+        super().__init__(reader)
+        
+
+class BookingDumpReader(AggregationReader):
+    """Traits contains the common interface of 
+    readabve functionalities of 'booking_dump' collection
+    """
+    
+    def __init__(self, reader):
+        """Initializer for BookingDumpReader class"""
+        super().__init__(reader)
+        
+
 class SL5ToSegmentsReader(Reader):
     """Traits contains the common interface of 
     readable functionalities of 'sl5_to_segments' collection
@@ -383,7 +425,6 @@ class MasterUniqueNamesReader(Reader):
         self.rename_columns(self.renamable_cols)
         return
         
-        
 
 class MongoReader():
     """Reads data from MongoDB database
@@ -398,11 +439,13 @@ class MongoReader():
         self.coll                  = self.db[collname]
         self.hideable              = { '_id': 0, 'timestamp': 0 }
 
-    def read(self, qry, method):
+    def read(self, qry):
         """Reads and returns the data as Pandas dataframe"""
-        if method.lower() == 'find':
-            return pd.DataFrame(list(self.coll.find(qry, self.hideable)))
-        return
+        return pd.DataFrame(list(self.coll.find(qry, self.hideable)))
+
+    def agg(self, pipe):
+        """Reads and returns the data as Pandas dataframe using aggregation"""
+        return pd.DataFrame(list(self.coll.aggregate(pipe)))
 
     def trash_one(self, qry):
         """Removes just one document from the collection"""
@@ -412,12 +455,11 @@ class MongoReader():
         """Removes as many documents as from the collection"""
         return self.coll.remove(qry, multi=True)
 
-    def read_dict(self, qry={}, method='find'):
+    def read_dict(self, qry={}):
         """Reads and returns the data as python dictionary
         """
         try:
-            if method.lower() == 'find':
-                return list(self.coll.find({}))[0]
+            return list(self.coll.find({}))[0]
         except IndexError:
             raise CollectionDoesNotExistException(self.collname)
         return
@@ -433,7 +475,7 @@ class ExcelReader():
         self.filepath  = filepath
         self.sheetname = sheetname
 
-    def read(self, qry=None, method=None):
+    def read(self, qry=None):
         """Reading data and returns as Pandas dataframe"""
         if self.sheetname is not None:
             xl = pd.ExcelFile(self.filepath)
@@ -462,10 +504,6 @@ class ExcelReader():
         if not self.sheetname in xl.sheet_names:
             raise ExcelSheetDoesNotExistException
         return
-        
-
-
-
 
 
 

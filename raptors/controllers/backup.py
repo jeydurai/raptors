@@ -4,7 +4,7 @@ from __future__ import division, print_function, absolute_import
 
 import sys
 import os
-from datetime import datetime
+from raptors.helpers.raptortools import ParsingTool as PT
 
 from raptors import __version__
 
@@ -56,7 +56,6 @@ class Backup():
         os.system(self.executable.shell_cmd_delete_dump_dir())
         return
         
-        
 
 class Executable():
     """Data Container to store executable strings
@@ -65,9 +64,9 @@ class Executable():
 
     def __init__(self, base_dir, create_tar=True):
         """Initializer for Executable"""
-        self.base_dir        = base_dir
+        self.base_dir        = base_dir 
         self.create_tar      = create_tar
-        self.dumpname        = "dump_{}{}".format(datetime.now().strftime('%d-%m-%Y-%H%M'), ".tar.gz")
+        self.dumpname        = PT.timestamped_filename('dump', '.tar.gz')
         self._db             = ''
         self._coll           = ''
         self._dump_directory = ''
