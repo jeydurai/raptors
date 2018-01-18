@@ -60,6 +60,15 @@ class DataFrameHelper():
             self.df.loc[:, new_colname] = self.df.loc[:, colname].map(mapper)
         return
 
+    def make_column_by_configuration(self, configs, new_colname, final_type=None):
+        """Makes a new column based on the mapper provided"""
+        self.df.loc[:, new_colname] = ''
+        for config in configs:
+            self.df.loc[:, new_colname] = self.df.loc[:, new_colname] + self.df.loc[:, config.colname].map(config.mapper)
+        if final_type is not None:
+            self.df.loc[:, new_colname] = self.df.loc[:, new_colname].astype(final_type)
+        return
+
     def remove_duplicates(self, cols, map_desc='Redundancy removal'):
         """Removes the duplicate entries in the dataframe"""
         print("Before performing {} mapping, the dataframe contained {} row(s) {} col(s)".format(map_desc, self.rows, self.cols))

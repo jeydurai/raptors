@@ -8,6 +8,7 @@ from datetime import datetime
 from pymongo import MongoClient
 import pandas as pd
 import string
+from collections import namedtuple
 from raptors.helpers.exceptions.modelsexceptions import ExcelFileDoesNotExistException
 from raptors.helpers.exceptions.modelsexceptions import ExcelSheetDoesNotExistException
 from raptors.helpers.exceptions.modelsexceptions import CollectionDoesNotExistException
@@ -217,6 +218,14 @@ class EntBookingDumpReader(SalesDumpReader):
         self.fill_column_by_mask(masks, 'tier_code')
         return
         
+    def make_dealid_desc_column(self):
+        """Public method to create 'dealid_desc' column"""
+        print("[Info]: Making 'deal_id_desc' column...")
+        base_colname = 'erp_deal_id'
+        masks = { 'Non Deal ID': (self.df.loc[:, base_colname] == 0), 'Deal ID': (-(self.df.loc[:, base_colname] == 0)) }
+        self.fill_column_by_mask(masks, 'deal_id_desc')
+        return
+        
     def validate_mapping(self):
         """Validates whether any unmapped data available"""
         self._validate_mapping_technologies()
@@ -248,7 +257,7 @@ class EntBookingDumpReader(SalesDumpReader):
         unmapped = self.df.loc[mask, :].shape[0]
         if unmapped > 0:
             print("{} row(s) of unmapped unique customers data found".format(unmapped))
-            self.df.loc[mask, ['customer_name', 'grp_name']].to_excel('unmapped_unique_customers.xlsx', index=False)
+            self.df.loc[mask, ['customer_name', 'grp_name']].to_excel('unmapped_unique_customers_from_booking.xlsx', index=False)
         return
         
 
@@ -265,14 +274,15 @@ class SFDCDumpReader(SalesDumpReader):
             'tms_sales_allocated_bookings_base_list' : 'base_list',
             'tbm' : 'sales_agent'
         }
+        self.ColMapper = namedtuple('Config', [ 'colname', 'mapper' ])
 
     def make_pastdue_column(self):
         """Public method to validate 'past_due' column"""
         print("[Info]: Validating 'past_due' column...")
         base_colname = 'no_of_days_past_ebd'
         masks = { 
-            'FALSE' : (self.df.loc[:, base_colname] < 0),
-            'TRUE'  : (self.df.loc[:, base_colname] >= 0),
+            'NEGATIVE'           : (self.df.loc[:, base_colname] < 0),
+            'ZERO_AND_POSITIVE'  : (self.df.loc[:, base_colname] >= 0),
         }
         self.fill_column_by_mask(masks, 'past_due')
         return
@@ -294,7 +304,24 @@ class SFDCDumpReader(SalesDumpReader):
         
     def make_fiscalmonthid_column(self):
         """Public method to make fiscal_month_id from fiscal_month"""
-        self.make_new_column(lambda x: x, 'fiscal_month', new_colname='fiscal_month_id')
+        self.make_new_column(lambda x: str(x).zfill(2), 'fiscal_month', new_colname='fiscal_month_id')
+        return
+        
+    def make_fiscalweekid_column(self):
+        """Public method to make fiscal_week_id from fiscal_month_id and fiscal_week_of_month"""
+        configs = []
+        configs.append(self.ColMapper(colname='fiscal_year_id', mapper=lambda x: str(x)))
+        configs.append(self.ColMapper(colname='fiscal_month', mapper=lambda x: str(x).zfill(2)))
+        configs.append(self.ColMapper(colname='fiscal_week_of_month', mapper=lambda x: str(x)))
+        self.make_column_by_configuration(configs, 'fiscal_week_id', final_type='int64')
+        return
+        
+    def make_fiscalperiodid_column(self):
+        """Public method to make fiscal_period_id from fiscal_month and fiscal_period"""
+        configs = []
+        configs.append(self.ColMapper(colname='fiscal_period', mapper=lambda x: str(x)[-4:]))
+        configs.append(self.ColMapper(colname='fiscal_month', mapper=lambda x: str(x).zfill(2)))
+        self.make_column_by_configuration(configs, 'fiscal_period_id', final_type='int64')
         return
         
     def make_prodserv_column(self):
@@ -308,6 +335,7 @@ class SFDCDumpReader(SalesDumpReader):
         """Validates whether any unmapped data available"""
         self._validate_mapping_technologies()
         self._validate_mapping_segements()
+        self._validate_mapping_uniquenames()
         return
 
     def _validate_mapping_technologies(self):
@@ -327,6 +355,16 @@ class SFDCDumpReader(SalesDumpReader):
             print("{} row(s) of unmapped 'sales_level_5' data found".format(unmapped))
             self.df.loc[mask, ['sales_level_5', 'rm_name']].to_excel('unmapped_segments.xlsx', index=False)
         return
+
+    def _validate_mapping_uniquenames(self):
+        """Validates whether any unmapped data available in uniquenames mapping"""
+        mask = pd.isnull(self.df.loc[:, 'acc_name'])
+        unmapped = self.df.loc[mask, :].shape[0]
+        if unmapped > 0:
+            print("{} row(s) of unmapped unique customers data found".format(unmapped))
+            self.df.loc[mask, ['customer_name', 'grp_name']].to_excel('unmapped_unique_customers_from_sfdc.xlsx', index=False)
+        return
+        
         
 
 class TechSpec1Reader(Reader):
@@ -364,6 +402,16 @@ class BookingDumpReader(AggregationReader):
     
     def __init__(self, reader):
         """Initializer for BookingDumpReader class"""
+        super().__init__(reader)
+        
+
+class SFDCDumpReader(SalesDumpReader):
+    """Traits contains the common interface of 
+    readabve functionalities of 'sfdc_dump' collection
+    """
+    
+    def __init__(self, reader):
+        """Initializer for SFDCDumpReader class"""
         super().__init__(reader)
         
 

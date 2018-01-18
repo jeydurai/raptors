@@ -93,6 +93,7 @@ class CleanBookingDump():
         self.reader.make_prodserv_column()
         self.reader.make_cloudflag_column()
         self.reader.make_tiercode_column()
+        self.reader.make_dealid_desc_column()
         self.reader.validate_sl4()
         return
 
@@ -210,6 +211,8 @@ class CleanSFDCDump():
         self.reader.make_fiscalquarter_column()
         self.reader.make_fiscalquarterid_column()
         self.reader.make_fiscalmonthid_column()
+        self.reader.make_fiscalweekid_column()
+        self.reader.make_fiscalperiodid_column()
         self.reader.make_prodserv_column()
         self.reader.make_pastdue_column()
         return
@@ -232,9 +235,15 @@ class CleanSFDCDump():
     def _execute_mapping(self):
         """Executes All Mapping"""
         self.techmapper.remove_dedundancy()
+        self.uniquenames.upcase_names()
+        self.uniquenames.upcase_accnames()
+        self.uniquenames.upcase_grpnames()
+        self.uniquenames.remove_dedundancy()
+        self.uniquenames.transform_names_to_customername()
         try:
             self.reader.map_technologies(self.techmapper)
             self.reader.map_segments(self.segmapper)
+            self.reader.map_uniquenames(self.uniquenames)
         except MappingRowsExceededException as e:
             print("[Error]: Couldn't proceed further due to \n\n{}".format(e.msg()))
 
