@@ -9,6 +9,7 @@ import logging
 from raptors.controllers.backup import Backup
 from raptors.controllers.sync import Sync
 from raptors.controllers.generate import Generate
+from raptors.controllers.fetch import Fetch
 from raptors.controllers.cleandump import CleanBookingDump, CleanSFDCDump
 from raptors.helpers.exceptions.controllersexceptions import SyncFilePathNotGivenException
 from raptors.helpers.exceptions.controllersexceptions import BothCommAndAllSL3TrueError
@@ -140,6 +141,17 @@ def generate(config, name, owner, dbname, host, port, history, cur_year, sheetna
     xl_opts = { 'filepath': config.reptdir, 'sheetname': sheetname }
     mong_opts = { 'host': host, 'port': port, 'dbname': dbname }
     Generate(rept_opts, mong_opts, xl_opts).execute()
+    return
+    
+    
+@main.command()
+@click.option('--period', '-p', help='Which period the command to run for')
+@click.argument('subcommand', nargs=1, required=True)
+@pass_config
+def fetch(config, period, subcommand):
+    """Fetches various information"""
+    rept_opts = { 'period' : period, 'outfile': config.reptdir }
+    Fetch(subcommand, rept_opts).execute()
     return
     
     

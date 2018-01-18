@@ -10,6 +10,7 @@ from pprint import pprint
 from raptors.models.readers import BookingDumpReader, SFDCDumpReader, MongoReader
 from raptors.models.writers import Writer, MongoWriter, ExcelWriter
 from raptors.helpers.raptortools import ParsingTool as PT
+from raptors.helpers.raptortools import GeneralTool as GT
 from raptors.helpers.mongoutils import Mongo
 from raptors import __version__
 
@@ -120,23 +121,9 @@ class Generator():
             years.append(self.cur_yr-h)
         return [ str(y) + m for y in years for m in self.months ]
 
-    def set_query_config(self):
+    def set_query_config_for_owner(self):
         """Sets the Query Configuration based on owner"""
-        self._set_query_config_for_owner()
-        return
-
-    def _set_query_config_for_owner(self):
-        """Sets the Owner specific query configuration"""
-        if (self.owner == 'sudhir' or self.owner == 'comm' or self.owner == 'commercial' or self.owner == 'nayar'):
-            self.qconfig['sales_level_3'] = ['INDIA_COMM_1']
-        elif (self.owner == 'mukund' or self.owner == 'mukundhan' or self.owner == 'sw_geo' or self.owner == 'sw-geo'):
-            self.qconfig['sales_level_4'] = ['INDIA_COMM_SW_GEO']
-        elif (self.owner == 'tm' or self.owner == 'tirthankar' or self.owner == 'sl_tl' or self.owner == 'sl-tl'):
-            self.qconfig['sales_level_4'] = ['INDIA_COMM_SL_TL']
-        elif (self.owner == 'vipul' or self.owner == 'ne_geo' or self.owner == 'ne-geo'):
-            self.qconfig['sales_level_4'] = ['INDIA_COMM_NE_GEO']
-        elif (self.owner == 'fakhrudhin' or self.owner == 'bd' or self.owner == 'bangladesh'):
-            self.qconfig['sales_level_4'] = ['INDIA_COMM_BD']
+        self.qconfig = GT.get_query_config_for_owner(self.owner)
         return
 
 
@@ -157,7 +144,7 @@ class BookingGenerator(Generator):
         self.mong_writer  = Writer(MongoWriter(self.dbname, self.summarycollname, host=self.host, port=self.port))
         self.__all_fields = None
         self.uniq_fields = list(self.uniq_fields.union({ 'sales_agent', 'recurring_offer_flag', 'tier_code', 
-            'grp_ver', 'grp_ver2', 'product_classification', 'grp_name' }))
+            'grp_ver', 'grp_ver2', 'product_classification', 'grp_name', 'deal_id_desc' }))
         self.val_fields = list(self.val_fields.union({ 'booking_net', 'base_list', 'standard_cost' }))
 
     def read(self):
@@ -181,7 +168,7 @@ class BookingGenerator(Generator):
 
     def set_query_config(self):
         """Sets the Query Configuration based on owner"""
-        super()._set_query_config_for_owner()
+        super().set_query_config_for_owner()
         self._set_query_config_for_period()
         return
 
