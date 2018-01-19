@@ -5,7 +5,7 @@ from __future__ import division, print_function, absolute_import
 import sys
 import os
 from datetime import datetime
-from raptors.models.readers import EntBookingDumpReader, TechSpec1Reader, SFDCDumpReader
+from raptors.models.readers import EntBookingDumpReader, TechSpec1Reader, SFDCRawDumpReader
 from raptors.models.readers import MasterUniqueNamesReader, MongoReader, SL5ToSegmentsReader
 from raptors.models.writers import Writer, MongoWriter
 from raptors.helpers.mongoutils import Mongo
@@ -173,7 +173,8 @@ class CleanSFDCDump():
 
     raw_collname         = 'sfdc_raw_dump'
     techmapper_collname  = 'tech_spec1'
-    segmapper_collname  = 'sl5_to_segments'
+    segmapper_collname   = 'sl5_to_segments'
+    uniquenames_collname = 'master_unique_names'
    
 
     def __init__(self, comm, des_tbl, des_db, host=None, port=None):
@@ -181,9 +182,10 @@ class CleanSFDCDump():
         """
         self.comm        = comm
         self.sl3         = self._get_sales_level_3()
-        self.reader      = SFDCDumpReader(MongoReader(self.raw_collname))
+        self.reader      = SFDCRawDumpReader(MongoReader(self.raw_collname))
         self.techmapper  = TechSpec1Reader(MongoReader(self.techmapper_collname))
         self.segmapper   = SL5ToSegmentsReader(MongoReader(self.segmapper_collname))
+        self.uniquenames = MasterUniqueNamesReader(MongoReader(self.uniquenames_collname))
         self.writer      = Writer(MongoWriter(des_db, des_tbl, host=host, port=port))
         self.trash_query = {}
 
@@ -230,6 +232,8 @@ class CleanSFDCDump():
         self.techmapper.read()
         print("[Info]: Reading 'sl5_to_segments' data")
         self.segmapper.read()
+        print("[Info]: Reading 'master_unique_names' data")
+        self.uniquenames.read()
         return
 
     def _execute_mapping(self):

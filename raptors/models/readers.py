@@ -261,7 +261,7 @@ class EntBookingDumpReader(SalesDumpReader):
         return
         
 
-class SFDCDumpReader(SalesDumpReader):
+class SFDCRawDumpReader(SalesDumpReader):
     """Traits contains the common interface of 
     readable functionalities of 'sfdc_raw_dump' collection
     """
