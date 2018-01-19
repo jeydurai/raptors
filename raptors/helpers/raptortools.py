@@ -21,7 +21,7 @@ class GeneralTool():
     @staticmethod
     def get_query_config_for_owner(owner):
         """Sets the Owner specific query configuration"""
-        config = {}
+        qconfig = {}
         if (owner == 'sudhir' or owner == 'comm' or owner == 'commercial' or owner == 'nayar'):
             qconfig['sales_level_3'] = ['INDIA_COMM_1']
         elif (owner == 'mukund' or owner == 'mukundhan' or owner == 'sw_geo' or owner == 'sw-geo'):
