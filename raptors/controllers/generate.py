@@ -121,7 +121,12 @@ class Generator():
             years.append(self.cur_yr-h)
         return [ str(y) + m for y in years for m in self.months ]
 
-    def set_query_config_for_owner(self):
+    def set_query_config(self):
+        """Sets all the Query configuration"""
+        self._set_query_config_for_owner()
+        return
+
+    def _set_query_config_for_owner(self):
         """Sets the Query Configuration based on owner"""
         self.qconfig = GT.get_query_config_for_owner(self.owner)
         return
@@ -168,7 +173,7 @@ class BookingGenerator(Generator):
 
     def set_query_config(self):
         """Sets the Query Configuration based on owner"""
-        super().set_query_config_for_owner()
+        super()._set_query_config_for_owner()
         self._set_query_config_for_period()
         return
 
@@ -176,8 +181,8 @@ class BookingGenerator(Generator):
         """Sets the 'fiscal_period_id' specific query configuration"""
         for month in self.fin_months:
             self.qconfig['fiscal_period_id'] = [ int(month) ]
-            qry = [ { '$match': Mongo.make_query(self.qconfig) }, 
-                    { '$group': Mongo.make_group(self.uniq_fields, self.val_fields) }, 
+            qry = [ { '$match'  : Mongo.make_query(self.qconfig) }, 
+                    { '$group'  : Mongo.make_group(self.uniq_fields, self.val_fields) }, 
                     { '$project': Mongo.make_project(self.uniq_fields, self.val_fields) }]
             self.aggpipes.append(qry)
         return

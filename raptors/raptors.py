@@ -9,7 +9,7 @@ import logging
 from raptors.controllers.backup import Backup
 from raptors.controllers.sync import Sync
 from raptors.controllers.generate import Generate
-from raptors.controllers.fetch import Fetch
+from raptors.controllers.prepare import Prepare
 from raptors.controllers.cleandump import CleanBookingDump, CleanSFDCDump
 from raptors.helpers.exceptions.controllersexceptions import SyncFilePathNotGivenException
 from raptors.helpers.exceptions.controllersexceptions import BothCommAndAllSL3TrueError
@@ -151,7 +151,7 @@ def generate(config, name, owner, dbname, host, port, history, cur_year, sheetna
 def fetch(config, period, subcommand):
     """Fetches various information"""
     rept_opts = { 'period' : period, 'outfile': config.reptdir }
-    Fetch(subcommand, rept_opts).execute()
+    Prepare(subcommand, rept_opts).execute()
     return
     
     

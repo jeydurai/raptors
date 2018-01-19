@@ -17,8 +17,8 @@ __copyright__ = "Jeyaraj Durairaj"
 __license__ = "none"
 
 
-class Fetch():
-    """Fetch commands functionalities
+class Prepare():
+    """Prepare commands functionalities
     """
 
 
@@ -30,8 +30,8 @@ class Fetch():
     def execute(self):
         """Public method to execute the command
         """
-        print(self.cmd.lower())
-        print(self.opts)
         return
+
+
         
         
