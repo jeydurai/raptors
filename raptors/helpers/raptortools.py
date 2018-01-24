@@ -32,7 +32,7 @@ class GeneralTool():
             qconfig['sales_level_4'] = ['INDIA_COMM_NE_GEO']
         elif (owner == 'fakhruddhin' or owner == 'bd' or owner == 'bangladesh'):
             qconfig['sales_level_4'] = ['INDIA_COMM_BD']
-        return config
+        return qconfig
 
 
 class ParsingTool():

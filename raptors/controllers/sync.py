@@ -69,11 +69,11 @@ class Sync():
         reading full data first and write them
         """
         self._read_and_cleanup()
-        if not self.is_sfdc:
-            if self.is_sensitive:
-                self._expunge_existing_data()
-            else:
-                self._expunge_all_existing_data()
+        # if not self.is_sfdc:
+        if self.is_sensitive:
+            self._expunge_existing_data()
+        else:
+            self._expunge_all_existing_data()
         self.writer.write(self.reader.df)
         return
 
